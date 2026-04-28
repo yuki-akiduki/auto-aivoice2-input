@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A.I.VOICE2 テキスト自動入力</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Sora:wght@300;400;500;600;700&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #f6f4f0;
+    --bg-card: #ffffff;
+    --bg-inset: #f0ede8;
+    --bg-hover: #eae7e1;
+    --border: #ddd8d0;
+    --border-light: #eae6df;
+    --text-ink: #1a1a1a;
+    --text-body: #3d3a36;
+    --text-caption: #2e2a25;
+    --text-faint: #504a44;
+    --accent: #0d7377;
+    --accent-light: #e6f4f4;
+    --accent-hover: #0a5c5f;
+    --accent-subtle: rgba(13, 115, 119, 0.08);
+    --green: #1e7a3e;
+    --green-bg: #e8f5ed;
+    --green-border: #c3e5ce;
+    --red: #c53030;
+    --red-bg: #fde8e8;
+    --red-border: #f5c6c6;
+    --orange: #9a4200;
+    --orange-bg: #fef3e2;
+    --orange-border: #f5ddb5;
+    --blue: #2b6cb0;
+    --radius: 8px;
+    --radius-sm: 5px;
+    --radius-pill: 100px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+    --font-display: 'Sora', 'Zen Kaku Gothic New', sans-serif;
+    --font-body: 'Zen Kaku Gothic New', 'Sora', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-base);
+    color: var(--text-body);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.25;
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.06'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .app {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 24px 24px;
+    animation: entrance 0.5s ease-out;
+  }
+
+  @keyframes entrance {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══ Header ═══ */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .header-mark {
+    width: 38px;
+    height: 38px;
+    background: var(--accent);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md), 0 0 0 3px var(--accent-light);
+  }
+
+  .header-mark svg { width: 20px; height: 20px; color: #fff; }
+
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-ink);
+    letter-spacing: -0.01em;
+  }
+
+  .header h1 em { font-style: normal; color: var(--accent); font-weight: 700; }
+
+  .header-ver {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+  }
+
+  /* ═══ Cards ═══ */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    animation: cardIn 0.4s ease-out both;
+  }
+
+  .card:nth-child(2) { animation-delay: 0.04s; }
+  .card:nth-child(3) { animation-delay: 0.08s; }
+  .card:nth-child(4) { animation-delay: 0.12s; }
+  .card:nth-child(5) { animation-delay: 0.16s; }
+  .card:nth-child(6) { animation-delay: 0.20s; }
+  .card:nth-child(7) { animation-delay: 0.24s; }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 14px;
+    background: var(--bg-inset);
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .card-label svg { width: 12px; height: 12px; opacity: 0.5; stroke-width: 2.2; }
+
+  .card-inner { padding: 14px 16px; }
+
+  /* ═══ File Inputs ═══ */
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .file-row:last-child { margin-bottom: 0; }
+
+  .file-row .lbl {
+    width: 105px;
+    font-size: 0.78rem;
+    color: var(--text-caption);
+    flex-shrink: 0;
+  }
+
+  .file-row input {
+    flex: 1;
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-body);
+    padding: 7px 11px;
+    font-size: 0.76rem;
+    font-family: var(--font-mono);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .file-row input::placeholder { color: var(--text-faint); }
+
+  .file-row input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+  }
+
+  .btn {
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-outline {
+    padding: 7px 13px;
+    font-size: 0.74rem;
+    background: var(--bg-card);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+
+  .btn-outline:hover { background: var(--accent-light); }
+
+  /* ═══ Character Tags ═══ */
+  .tag-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 11px;
+    border-radius: var(--radius-pill);
+    font-size: 0.72rem;
+    font-weight: 500;
+    transition: transform 0.12s;
+  }
+
+  .tag:hover { transform: translateY(-1px); }
+  .tag svg { width: 11px; height: 11px; }
+
+  .tag-ok {
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid var(--green-border);
+  }
+
+  .tag-ng {
+    background: var(--red-bg);
+    color: var(--red);
+    border: 1px solid var(--red-border);
+  }
+
+  .tag-warn {
+    background: var(--orange-bg);
+    color: var(--orange);
+    border: 1px solid var(--orange-border);
+  }
+
+  /* ═══ Character Mapping ═══ */
+  .mapping-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .mapping-title {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-caption);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mapping-title svg { width: 13px; height: 13px; opacity: 0.5; }
+
+  .mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .mapping-row:last-child { border-bottom: none; }
+
+  .mapping-from {
+    width: 120px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-ink);
+    flex-shrink: 0;
+  }
+
+  .mapping-arrow {
+    color: var(--text-faint);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .mapping-select {
+    flex: 1;
+    max-width: 260px;
+    padding: 5px 8px;
+    font-size: 0.76rem;
+    font-family: var(--font-body);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-body);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .mapping-select:focus { border-color: var(--accent); }
+
+  .mapping-select.matched { border-color: var(--green-border); background: var(--green-bg); }
+  .mapping-select.unmatched { border-color: var(--orange-border); background: var(--orange-bg); }
+
+  .mapping-status {
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .mapping-status.ok { color: var(--green); }
+  .mapping-status.pending { color: var(--orange); }
+
+  /* ═══ Table ═══ */
+  .table-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .table-scroll::-webkit-scrollbar { width: 4px; }
+  .table-scroll::-webkit-scrollbar-track { background: transparent; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead { position: sticky; top: 0; z-index: 2; }
+
+  thead th {
+    background: var(--bg-inset);
+    padding: 8px 14px;
+    text-align: left;
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    font-weight: 500;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  thead th:first-child { width: 42px; text-align: center; }
+  thead th:nth-child(2) { width: 80px; }
+  thead th:nth-child(3) { width: 150px; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.1s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg-inset); }
+
+  tbody tr.active {
+    background: var(--accent-light);
+    position: relative;
+  }
+
+  tbody tr.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  tbody td {
+    padding: 7px 14px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  tbody td:first-child {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-faint);
+  }
+
+  tbody td:nth-child(2) {
+    color: var(--text-caption);
+    font-size: 0.74rem;
+  }
+
+  tbody td:nth-child(3) {
+    color: var(--text-ink);
+    font-weight: 500;
+    font-size: 0.78rem;
+  }
+
+  tbody td:nth-child(4) { color: var(--text-caption); }
+
+  tbody tr.active td:nth-child(4) { color: var(--text-body); }
+
+  tbody tr.row-warn td:nth-child(3) { color: var(--orange); }
+
+  tbody tr.row-skip { opacity: 0.4; text-decoration: line-through; }
+  tbody tr.row-override td:nth-child(3) { color: var(--accent); font-style: italic; }
+
+  /* Voice select in table */
+  .voice-sel {
+    font-size: 0.74rem;
+    font-family: var(--font-body);
+    padding: 2px 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-ink);
+    cursor: pointer;
+    max-width: 140px;
+  }
+  .voice-sel:focus { border-color: var(--accent); }
+
+  /* ═══ Preview Button ═══ */
+  .btn-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    font-family: var(--font-display);
+    background: var(--bg-card);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-preview:hover { background: var(--accent-light); }
+  .btn-preview svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .btn-preview .preview-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-faint);
+    font-weight: 400;
+  }
+
+  /* ═══ Modal Overlay ═══ */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+    animation: modalBgIn 0.2s ease-out;
+  }
+  .modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+
+  @keyframes modalBgIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .modal-panel {
+    width: 92vw;
+    max-width: 960px;
+    max-height: 88vh;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15), 0 2px 12px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalIn 0.25s ease-out;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 16px;
+    background: var(--bg-inset);
+    border-bottom: 1px solid var(--border-light);
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .modal-header svg { width: 13px; height: 13px; opacity: 0.5; stroke-width: 2.2; }
+  .modal-header .modal-count {
+    font-size: 0.62rem;
+    color: var(--text-faint);
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .modal-close {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-caption);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .modal-close:hover { background: var(--bg-hover); color: var(--text-ink); border-color: var(--text-faint); }
+  .modal-close svg { width: 14px; height: 14px; }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .modal-body::-webkit-scrollbar { width: 5px; }
+  .modal-body::-webkit-scrollbar-track { background: transparent; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .modal-body table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .modal-body thead { position: sticky; top: 0; z-index: 2; }
+  .modal-body td, .modal-body th { overflow: hidden; text-overflow: ellipsis; }
+  .modal-body td:nth-child(4) { word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
+
+  /* Calibration */
+  .cal-step {
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-body);
+    background: var(--bg-inset);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cal-step > span:first-child { flex: 1; }
+  .cal-step.active { background: var(--accent-light); border: 1px solid var(--accent); }
+  .cal-step.done { opacity: 1; }
+  .cal-status { font-size: 0.72rem; font-weight: 500; color: var(--text-faint); width: 160px; text-align: right; flex-shrink: 0; }
+  .cal-status.ok { color: var(--green); }
+  .cal-status.waiting { color: var(--orange); }
+  .cal-btn { padding: 3px 12px; font-size: 0.7rem; flex-shrink: 0; }
+
+  /* ═══ Controls ═══ */
+  .ctrl-row { display: flex; align-items: center; gap: 10px; }
+
+  .btn-go {
+    padding: 9px 24px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: var(--green);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 2px 8px rgba(45, 138, 78, 0.25);
+  }
+
+  .btn-go:hover {
+    background: #257a43;
+    box-shadow: 0 4px 14px rgba(45, 138, 78, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-go:disabled {
+    background: var(--border);
+    color: var(--text-faint);
+    box-shadow: none;
+    transform: none;
+    cursor: not-allowed;
+  }
+
+  .btn-halt {
+    padding: 9px 24px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .btn-halt:hover:not(:disabled) {
+    background: var(--red-bg);
+    border-color: var(--red);
+  }
+
+  .btn-halt:disabled {
+    color: var(--text-faint);
+    border-color: var(--border-light);
+    cursor: not-allowed;
+  }
+
+  .btn-restart {
+    padding: 9px 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+  }
+
+  .btn-restart:hover:not(:disabled) {
+    background: var(--accent-light);
+  }
+
+  .btn-restart:disabled {
+    color: var(--text-faint);
+    border-color: var(--border-light);
+    cursor: not-allowed;
+  }
+
+  .stats {
+    margin-left: auto;
+    display: flex;
+    gap: 18px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+
+  .stats .num { color: var(--text-ink); font-weight: 500; }
+
+  .stats .dim {
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    margin-right: 3px;
+    text-transform: uppercase;
+  }
+
+  .bar-track {
+    margin-top: 14px;
+    height: 4px;
+    background: var(--bg-inset);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #1a9b9f);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    position: relative;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -1px; top: -2px;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: 2px solid var(--bg-card);
+    box-shadow: 0 0 6px rgba(13, 115, 119, 0.35);
+  }
+
+  /* ═══ Log ═══ */
+  .log-scroll {
+    max-height: 150px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 0.71rem;
+    line-height: 1.85;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-scroll::-webkit-scrollbar { width: 4px; }
+  .log-scroll::-webkit-scrollbar-track { background: transparent; }
+  .log-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .ll { display: flex; gap: 8px; padding: 1px 0; }
+  .ll .t { flex-shrink: 0; width: 32px; text-align: right; font-weight: 500; }
+
+  .ll-ok .t { color: var(--green); }
+  .ll-ok .m { color: var(--text-caption); }
+  .ll-err .t { color: var(--red); }
+  .ll-err .m { color: var(--red); }
+  .ll-info .t { color: var(--blue); }
+  .ll-info .m { color: var(--blue); opacity: 0.8; }
+
+  /* ═══ Footer ═══ */
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-caption);
+    animation: cardIn 0.4s ease-out 0.28s both;
+  }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .dot-on {
+    background: var(--green);
+    box-shadow: 0 0 5px rgba(45, 138, 78, 0.4);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  .dot-off {
+    background: var(--red);
+    box-shadow: 0 0 5px rgba(197, 48, 48, 0.3);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>
+      </svg>
+    </div>
+    <h1><em>A.I.VOICE2</em> テキスト自動入力</h1>
+    <span class="header-ver">v1.0</span>
+  </header>
+
+  <!-- File Selection -->
+  <div class="card">
+    <div class="card-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+      ファイル
+    </div>
+    <div class="card-inner">
+      <div class="file-row">
+        <span class="lbl">台本ファイル</span>
+        <input type="text" id="script-path" value="" placeholder="ファイルを選択してください" readonly>
+        <button class="btn btn-outline" id="btn-load-script">参照...</button>
+      </div>
+      <div class="file-row">
+        <span class="lbl">VPCXファイル</span>
+        <input type="text" id="vpcx-path" value="" placeholder="ファイルを選択してください" readonly>
+        <button class="btn btn-outline" id="btn-load-vpcx">参照...</button>
+      </div>
+      <div class="file-row" style="margin-top:6px;">
+        <span class="lbl"></span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-caption);cursor:pointer;">
+          <input type="checkbox" id="chk-standard" style="cursor:pointer;">
+          標準ボイスを含める
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャラボイス設定 -->
+  <div class="card">
+    <div class="card-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      キャラボイス設定
+    </div>
+    <div class="card-inner">
+      <div class="tag-wrap" id="char-tags">
+        <span class="tag tag-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>葵_普通</span>
+        <span class="tag tag-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>茜_普通</span>
+        <span class="tag tag-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>ゆかり_普通</span>
+        <span class="tag tag-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>ゆかり_悲しみ</span>
+        <span class="tag tag-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>あかり_普通</span>
+        <span class="tag tag-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>あかり_喜び</span>
+        <span class="tag tag-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>詞音</span>
+        <span class="tag tag-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>ゆかり</span>
+        <span class="tag tag-ng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>不明キャラ</span>
+      </div>
+
+      <!-- Mapping (dynamically populated by JS) -->
+      <div class="mapping-section" style="display:none;">
+        <div class="mapping-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><line x1="12" y1="8" x2="12" y2="16"/><polyline points="8 12 12 16 16 12"/></svg>
+          キャラクターマッピング（候補の割り当て）
+        </div>
+        <div class="mapping-rows"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ボイスプレビュー（インライン + モーダル） -->
+  <div class="card">
+    <div class="card-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      ボイスプレビュー
+      <span style="margin-left:auto;font-size:0.62rem;color:var(--text-faint);" id="preview-count">0 行</span>
+    </div>
+    <div class="table-scroll" id="inline-preview" style="max-height:220px;">
+      <table>
+        <thead><tr><th style="width:42px;text-align:center;">#</th><th style="width:80px;">元キャラ</th><th style="width:150px;">割当ボイス</th><th>セリフ</th></tr></thead>
+        <tbody id="inline-table"></tbody>
+      </table>
+    </div>
+    <div class="card-inner" style="padding:8px 16px;border-top:1px solid var(--border-light);">
+      <button class="btn btn-outline" id="btn-open-preview" type="button" style="width:100%;text-align:center;">
+        拡大表示で編集
+      </button>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="ctrl-row">
+        <button class="btn btn-go" id="btn-start">▶ 開始</button>
+        <button class="btn btn-halt" id="btn-stop" disabled>■ 停止</button>
+        <button class="btn btn-restart" id="btn-restart" disabled>↻ 再スタート</button>
+        <div class="stats">
+          <div><span class="dim">進捗</span><span class="num" id="progress-text">6 / 12</span></div>
+          <div><span class="dim">経過</span><span class="num" id="elapsed-time">00:19</span></div>
+          <div><span class="dim">残り</span><span class="num" id="remaining-time">~00:19</span></div>
+        </div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="progress-bar" style="width:50%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <div class="card-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      ログ
+    </div>
+    <div class="card-inner">
+      <div class="log-scroll" id="log-area">
+        <div class="ll ll-info"><span class="t">INFO</span><span class="m">自動入力を開始します (12行)</span></div>
+        <div class="ll ll-ok"><span class="t">OK</span><span class="m">1/12 葵_普通：皆さん、こんにちは！今日の動画を始めましょう。</span></div>
+        <div class="ll ll-ok"><span class="t">OK</span><span class="m">2/12 茜_普通：こんにちは！今日もよろしくお願いします！</span></div>
+        <div class="ll ll-info"><span class="t">MAP</span><span class="m">3/12 詞音 → 詞音_普通 にマッピング</span></div>
+        <div class="ll ll-ok"><span class="t">OK</span><span class="m">3/12 詞音_普通：こんにちは。今日のテーマは何ですか？</span></div>
+        <div class="ll ll-ok"><span class="t">OK</span><span class="m">4/12 ゆかり_普通：今日はプログラミングについて話しましょう。</span></div>
+        <div class="ll ll-info"><span class="t">..</span><span class="m">6/12 葵_普通：まずはPythonの基礎から始めましょう。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- キャリブレーション -->
+  <div class="card" id="calibration-card">
+    <div class="card-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+      キャリブレーション
+    </div>
+    <div class="card-inner" id="cal-body">
+      <p style="font-size:0.8rem;color:var(--text-caption);margin-bottom:10px;">
+        AIVoice2のUI位置を記録します。各ステップで指示された場所をクリックしてください。（3秒以内）
+      </p>
+      <div id="cal-steps" style="margin-bottom:10px;">
+        <div class="cal-step" data-step="search_box">
+          <span>① 検索ボックス</span>
+          <span class="cal-status">未記録</span>
+          <button class="btn btn-outline cal-btn" data-step="search_box">記録</button>
+        </div>
+        <div class="cal-step" data-step="first_result">
+          <span>② 検索結果の1番目のキャラ</span>
+          <span class="cal-status">未記録</span>
+          <button class="btn btn-outline cal-btn" data-step="first_result">記録</button>
+        </div>
+        <div class="cal-step" data-step="add_button">
+          <span>③ 「+」追加ボタン</span>
+          <span class="cal-status">未記録</span>
+          <button class="btn btn-outline cal-btn" data-step="add_button">記録</button>
+        </div>
+        <div class="cal-step" data-step="text_entry">
+          <span>④ 1番目のテキスト入力エリア</span>
+          <span class="cal-status">未記録</span>
+          <button class="btn btn-outline cal-btn" data-step="text_entry">記録</button>
+        </div>
+      </div>
+      <span id="cal-msg" style="font-size:0.78rem;color:var(--text-caption);"></span>
+    </div>
+  </div>
+
+  <!-- Status Footer -->
+  <div class="foot">
+    <div class="dot dot-on"></div>
+    <span>A.I.VOICE2 Editor 検出済み — A.I.VOICE2 Editor - (新規プロジェクト)</span>
+  </div>
+
+</div>
+
+<!-- ボイスプレビュー Modal -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      ボイスプレビュー
+      <span class="modal-count" id="modal-count">0 行</span>
+      <button class="modal-close" id="btn-close-preview" type="button" title="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <table>
+        <thead><tr><th>#</th><th>元キャラ</th><th>割当ボイス</th><th>セリフ</th></tr></thead>
+        <tbody id="script-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const api = () => window.pywebview.api;
+const SKIP = '__SKIP__';
+
+let scriptLines = [];
+let vpcxChars = [];
+let matchResult = null;
+let lineOverrides = {};  // {行index: ボイス名 or SKIP}
+let polling = false;
+let stoppedMidway = false;  // 途中停止フラグ（再開ボタン表示用）
+let statusInterval = null;  // checkStatus のインターバルID
+
+const svgCheck = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+const svgX = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const svgWarn = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+
+function fmtTime(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ─── マッピング解決 ───
+function getMapping() {
+  const m = {};
+  document.querySelectorAll('.mapping-select').forEach(sel => {
+    if (sel.dataset.from) m[sel.dataset.from] = sel.value || '';
+  });
+  return m;
+}
+
+function resolveVoice(idx) {
+  // 行単位の上書きが最優先
+  if (lineOverrides[idx] !== undefined) return lineOverrides[idx];
+  const char = scriptLines[idx].character;
+  const mapping = getMapping();
+  // マッピングにある場合
+  if (mapping[char] !== undefined) return mapping[char] || char;
+  // 完全一致
+  if (matchResult && matchResult.exact.includes(char)) return char;
+  // auto_mapping
+  if (matchResult && matchResult.auto_mapping[char]) return matchResult.auto_mapping[char];
+  return char;
+}
+
+function getVariantsForChar(char) {
+  if (!vpcxChars.length) return [];
+  const base = char.split('_')[0];
+  return vpcxChars.filter(v => v.startsWith(base));
+}
+
+// ─── ボイスプレビュー テーブル ───
+function renderTable() {
+  const modalTbody = $('script-table');
+  const inlineTbody = $('inline-table');
+  if (!scriptLines.length) {
+    modalTbody.innerHTML = '';
+    inlineTbody.innerHTML = '';
+    return;
+  }
+
+  const mapping = getMapping();
+  let skipCount = 0;
+
+  // モーダル用（編集可能プルダウン付き）
+  modalTbody.innerHTML = scriptLines.map((l, i) => {
+    const voice = resolveVoice(i);
+    const isSkip = voice === SKIP;
+    if (isSkip) skipCount++;
+    const isOverride = lineOverrides[i] !== undefined;
+    const variants = getVariantsForChar(l.character);
+    const hasVariants = variants.length > 0 && !isSkip;
+
+    let cls = '';
+    if (isSkip) cls = 'row-skip';
+    else if (isOverride) cls = 'row-override';
+
+    let voiceCell;
+    if (isSkip) {
+      voiceCell = '<span style="color:var(--text-faint);">⏭ スキップ</span>';
+    } else if (hasVariants && vpcxChars.length) {
+      voiceCell = `<select class="voice-sel" data-idx="${i}" title="クリックでボイス変更">
+        ${variants.map(v => `<option value="${esc(v)}"${v===voice?' selected':''}>${esc(v)}</option>`).join('')}
+      </select>`;
+    } else {
+      voiceCell = esc(voice);
+    }
+
+    return `<tr class="${cls}" data-idx="${i}"><td>${i+1}</td><td>${esc(l.character)}</td><td>${voiceCell}</td><td>${esc(l.text)}</td></tr>`;
+  }).join('');
+
+  // インライン用（読み取り専用、テキスト表示のみ）
+  skipCount = 0;
+  inlineTbody.innerHTML = scriptLines.map((l, i) => {
+    const voice = resolveVoice(i);
+    const isSkip = voice === SKIP;
+    if (isSkip) skipCount++;
+    const isOverride = lineOverrides[i] !== undefined;
+    let cls = '';
+    if (isSkip) cls = 'row-skip';
+    else if (isOverride) cls = 'row-override';
+    const voiceText = isSkip ? '⏭' : esc(voice);
+    return `<tr class="${cls}" data-idx="${i}"><td>${i+1}</td><td>${esc(l.character)}</td><td>${voiceText}</td><td>${esc(l.text)}</td></tr>`;
+  }).join('');
+
+  // 行数表示
+  const active = scriptLines.length - skipCount;
+  const countText = skipCount > 0 ? `${active}行 (${skipCount}スキップ)` : `${scriptLines.length}行`;
+  $('preview-count').textContent = countText;
+  $('modal-count').textContent = countText;
+
+  // モーダル内プルダウン変更イベント
+  modalTbody.querySelectorAll('.voice-sel').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      const newVoice = e.target.value;
+      const defaultVoice = resolveVoiceDefault(idx);
+      if (newVoice === defaultVoice) {
+        delete lineOverrides[idx];
+      } else {
+        lineOverrides[idx] = newVoice;
+      }
+      renderTable();
+    });
+  });
+}
+
+function resolveVoiceDefault(idx) {
+  // overridesなしでのデフォルト解決
+  const char = scriptLines[idx].character;
+  const mapping = getMapping();
+  if (mapping[char] !== undefined) return mapping[char] || char;
+  if (matchResult && matchResult.exact.includes(char)) return char;
+  if (matchResult && matchResult.auto_mapping[char]) return matchResult.auto_mapping[char];
+  return char;
+}
+
+// ─── キャラボイス設定 タグ ───
+function renderCharTags() {
+  if (!matchResult) { $('char-tags').innerHTML = ''; return; }
+  let html = '';
+  matchResult.exact.forEach(c => html += `<span class="tag tag-ok">${svgCheck}${esc(c)}</span>`);
+  Object.keys(matchResult.partial).forEach(c => html += `<span class="tag tag-warn">${svgWarn}${esc(c)}</span>`);
+  matchResult.unmatched.forEach(c => html += `<span class="tag tag-ng">${svgX}${esc(c)}</span>`);
+  $('char-tags').innerHTML = html;
+}
+
+// ─── キャラボイス設定 マッピング ───
+function renderMapping() {
+  const section = document.querySelector('.mapping-section');
+  if (!matchResult) { section.style.display = 'none'; return; }
+
+  // partial + unmatched をまとめてマッピング対象にする
+  const needsMapping = {...matchResult.partial};
+  matchResult.unmatched.forEach(c => { needsMapping[c] = vpcxChars; });
+  // exact も候補があればマッピング行を出す（スキップ選択可能にするため）
+  matchResult.exact.forEach(c => {
+    const variants = getVariantsForChar(c);
+    if (variants.length > 0 || true) needsMapping[c] = vpcxChars; // 全キャラでスキップ可能に
+  });
+
+  if (Object.keys(needsMapping).length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const container = section.querySelector('.mapping-rows');
+  container.innerHTML = Object.entries(needsMapping).map(([from, candidates]) => {
+    const auto = matchResult.auto_mapping[from] || '';
+    const isExact = matchResult.exact.includes(from);
+    const defaultVal = isExact ? from : auto;
+    const statusText = isExact ? '完全一致' : (auto ? '自動候補' : '未割当');
+    const statusCls = (isExact || auto) ? 'ok' : 'pending';
+
+    // バリエーション候補
+    const variants = getVariantsForChar(from);
+    const options = variants.length ? variants : candidates;
+
+    return `<div class="mapping-row">
+      <span class="mapping-from">${esc(from)}</span>
+      <span class="mapping-arrow">\u2192</span>
+      <select class="mapping-select ${statusCls==='ok'?'matched':'unmatched'}" data-from="${esc(from)}">
+        ${options.map(c=>`<option value="${esc(c)}"${c===defaultVal?' selected':''}>${esc(c)}</option>`).join('')}
+        <option value="${SKIP}">\u23ed\ufe0f \u30b9\u30ad\u30c3\u30d7</option>
+      </select>
+      <span class="mapping-status ${statusCls}">${statusText}</span>
+    </div>`;
+  }).join('');
+
+  // マッピング変更 → ボイスプレビュー自動更新
+  container.querySelectorAll('select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const st = sel.nextElementSibling;
+      if (sel.value === SKIP) {
+        sel.className = 'mapping-select unmatched'; st.className = 'mapping-status pending'; st.textContent = '\u30b9\u30ad\u30c3\u30d7';
+      } else if (sel.value) {
+        sel.className = 'mapping-select matched'; st.className = 'mapping-status ok'; st.textContent = '\u5272\u5f53\u6e08';
+      } else {
+        sel.className = 'mapping-select unmatched'; st.className = 'mapping-status pending'; st.textContent = '\u672a\u5272\u5f53';
+      }
+      lineOverrides = {}; // マッピング変更で個別上書きリセット
+      renderTable();
+    });
+  });
+}
+
+// ─── ログ・進捗 ───
+function addLog(type, message) {
+  const area = $('log-area');
+  const cls = type==='ok'?'ll-ok':type==='error'?'ll-err':'ll-info';
+  const tag = type==='ok'?'OK':type==='error'?'ERR':type==='map'?'MAP':'INFO';
+  area.innerHTML += `<div class="ll ${cls}"><span class="t">${tag}</span><span class="m">${esc(message)}</span></div>`;
+  area.scrollTop = area.scrollHeight;
+}
+
+function setProgress(current, total, elapsed, lineIndex) {
+  $('progress-text').textContent = `${current} / ${total}`;
+  $('elapsed-time').textContent = fmtTime(elapsed);
+  $('progress-bar').style.width = ((current/total)*100)+'%';
+  if (current > 0) $('remaining-time').textContent = '~'+fmtTime((elapsed/current)*(total-current));
+  // ハイライト（モーダル + インライン両方）
+  document.querySelectorAll('#script-table tr, #inline-table tr').forEach(tr => tr.classList.remove('active'));
+  if (lineIndex !== undefined) {
+    const row1 = document.querySelector(`#script-table tr[data-idx="${lineIndex}"]`);
+    if (row1) { row1.classList.add('active'); row1.scrollIntoView({block:'nearest'}); }
+    const row2 = document.querySelector(`#inline-table tr[data-idx="${lineIndex}"]`);
+    if (row2) { row2.classList.add('active'); row2.scrollIntoView({block:'nearest'}); }
+  }
+}
+
+function resetUI() {
+  $('progress-text').textContent = '0 / 0';
+  $('elapsed-time').textContent = '00:00';
+  $('remaining-time').textContent = '--:--';
+  $('progress-bar').style.width = '0%';
+  $('log-area').innerHTML = '';
+}
+
+// ─── ステータス確認 ───
+async function checkStatus() {
+  try {
+    const d = await api().check_status();
+    const dot = document.querySelector('.foot .dot');
+    const span = document.querySelector('.foot span');
+    if (d.connected) { dot.className='dot dot-on'; span.textContent=`A.I.VOICE2 Editor \u691c\u51fa\u6e08\u307f \u2014 ${d.title}`; }
+    else { dot.className='dot dot-off'; span.textContent='A.I.VOICE2 Editor \u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093'; }
+  } catch(e) {}
+}
+
+// ─── メッセージポーリング ───
+async function pollMessages() {
+  if (!polling) return;
+  try {
+    const messages = await api().get_messages();
+    for (const msg of messages) {
+      switch(msg.type) {
+        case 'progress': setProgress(msg.current, msg.total, msg.elapsed, msg.line_index); break;
+        case 'ok': addLog('ok', msg.message); break;
+        case 'map': addLog('map', msg.message); break;
+        case 'info': addLog('info', msg.message); break;
+        case 'error': addLog('error', msg.message); break;
+        case 'done':
+          polling = false;
+          $('btn-start').disabled = false;
+          $('btn-stop').disabled = true;
+          $('btn-restart').disabled = false;
+          if (msg.success) {
+            addLog('info', '\u5168\u884c\u5b8c\u4e86\uff01');
+            stoppedMidway = false;
+            $('btn-restart').textContent = '\u21bb \u518d\u30b9\u30bf\u30fc\u30c8';
+          } else {
+            if (msg.stopped_at !== undefined && msg.stopped_at > 0) {
+              stoppedMidway = true;
+              $('btn-restart').textContent = '\u25b6 \u9014\u4e2d\u518d\u958b';
+            } else {
+              stoppedMidway = false;
+              $('btn-restart').textContent = '\u21bb \u518d\u30b9\u30bf\u30fc\u30c8';
+            }
+          }
+          return;
+      }
+    }
+  } catch(e) {}
+  if (polling) setTimeout(pollMessages, 150);
+}
+
+// ─── ボタンイベント ───
+$('btn-load-script').addEventListener('click', async () => {
+  const d = await api().load_script();
+  if (!d || d.error) return;
+  $('script-path').value = d.path;
+  scriptLines = d.lines;
+  matchResult = d.match;
+  lineOverrides = {};
+  renderCharTags();
+  renderMapping();
+  renderTable();
+  resetUI();
+});
+
+$('btn-load-vpcx').addEventListener('click', async () => {
+  const d = await api().load_vpcx();
+  if (!d || d.error) return;
+  $('vpcx-path').value = d.path;
+  $('chk-standard').checked = false;
+  vpcxChars = d.characters;
+  matchResult = d.match;
+  lineOverrides = {};
+  renderCharTags();
+  renderMapping();
+  renderTable();
+});
+
+$('chk-standard').addEventListener('change', async () => {
+  const include = $('chk-standard').checked;
+  const d = await api().set_include_standard(include);
+  if (!d || d.error) return;
+  vpcxChars = d.characters;
+  matchResult = d.match;
+  lineOverrides = {};
+  renderCharTags();
+  renderMapping();
+  renderTable();
+});
+
+async function doStart() {
+  const mapping = getMapping();
+  const overrides = {...lineOverrides};
+  resetUI();
+  stoppedMidway = false;
+  $('btn-restart').textContent = '\u21bb \u518d\u30b9\u30bf\u30fc\u30c8';
+  $('btn-start').disabled = true;
+  $('btn-stop').disabled = false;
+  $('btn-restart').disabled = true;
+  const d = await api().start(mapping, overrides);
+  if (d.error) { addLog('error', d.error); $('btn-start').disabled=false; $('btn-stop').disabled=true; return; }
+  // 自動化中はブリッジ呼び出しゼロ。完了時に onAutomationDone() でログ一括表示
+  if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+  // 作動中メッセージ表示
+  const activeLines = scriptLines.length;
+  const estTime = Math.ceil(activeLines * 2.2);
+  $('log-area').innerHTML = `<div class="ll ll-info"><span class="t">INFO</span><span class="m">作動中... ${activeLines}行 / 予想時間 ${fmtTime(estTime)}</span></div>`
+    + `<div class="ll ll-info"><span class="t">INFO</span><span class="m">ESCキーで停止できます</span></div>`;
+  $('progress-text').textContent = `0 / ${activeLines}`;
+  $('elapsed-time').textContent = '00:00';
+  $('remaining-time').textContent = '~' + fmtTime(estTime);
+  $('progress-bar').style.width = '0%';
+  // 経過時間カウンター（前回のタイマーをクリア）
+  if (window._elapsedTimer) { clearInterval(window._elapsedTimer); }
+  const startedAt = Date.now();
+  window._elapsedTimer = setInterval(() => {
+    const elapsed = (Date.now() - startedAt) / 1000;
+    $('elapsed-time').textContent = fmtTime(elapsed);
+    const remaining = Math.max(0, estTime - elapsed);
+    $('remaining-time').textContent = '~' + fmtTime(remaining);
+  }, 1000);
+  $('log-area').closest('.card').scrollIntoView({behavior:'smooth'});
+}
+
+async function doResume() {
+  const mapping = getMapping();
+  const overrides = {...lineOverrides};
+  $('btn-start').disabled = true;
+  $('btn-stop').disabled = false;
+  $('btn-restart').disabled = true;
+  const d = await api().resume(mapping, overrides);
+  if (d.error) { addLog('error', d.error); $('btn-start').disabled=false; $('btn-stop').disabled=true; return; }
+  addLog('info', `${d.start_from + 1}\u884c\u76ee\u304b\u3089\u518d\u958b\u3057\u307e\u3059`);
+  if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+  const remainLines = scriptLines.length - d.start_from;
+  const estTime2 = Math.ceil(remainLines * 2.2);
+  $('log-area').innerHTML += `<div class="ll ll-info"><span class="t">INFO</span><span class="m">作動中... ${remainLines}行 / 予想時間 ${fmtTime(estTime2)}</span></div>`
+    + `<div class="ll ll-info"><span class="t">INFO</span><span class="m">ESCキーで停止できます</span></div>`;
+  if (window._elapsedTimer) { clearInterval(window._elapsedTimer); }
+  const startedAt2 = Date.now();
+  window._elapsedTimer = setInterval(() => {
+    const elapsed = (Date.now() - startedAt2) / 1000;
+    $('elapsed-time').textContent = fmtTime(elapsed);
+    const remaining = Math.max(0, estTime2 - elapsed);
+    $('remaining-time').textContent = '~' + fmtTime(remaining);
+  }, 1000);
+  $('log-area').closest('.card').scrollIntoView({behavior:'smooth'});
+}
+
+// ─── 自動化完了通知（Python _progress_reader から呼ばれる） ───
+function onAutomationDone() {
+  // 経過時間タイマー停止
+  if (window._elapsedTimer) { clearInterval(window._elapsedTimer); window._elapsedTimer = null; }
+  // ステータスチェック再開
+  statusInterval = setInterval(checkStatus, 5000);
+  // ログ一括表示
+  polling = true;
+  pollMessages();
+}
+
+$('btn-start').addEventListener('click', doStart);
+
+$('btn-stop').addEventListener('click', async () => {
+  await api().stop();
+  $('btn-stop').disabled = true;
+});
+
+$('btn-restart').addEventListener('click', async () => {
+  // 実行中なら先に停止してから再スタート
+  if (!$('btn-stop').disabled) {
+    await api().stop();
+    // 停止完了を待つ
+    await new Promise(r => setTimeout(r, 500));
+  }
+  if (stoppedMidway) {
+    await doResume();
+  } else {
+    await doStart();
+  }
+});
+
+// ─── 初期化 ───
+$('script-table').innerHTML = '';
+$('inline-table').innerHTML = '';
+$('char-tags').innerHTML = '<span style="color:var(--text-faint);font-size:0.75rem;">\u53f0\u672c\u3068VPCX\u3092\u8aad\u307f\u8fbc\u3093\u3067\u304f\u3060\u3055\u3044</span>';
+$('log-area').innerHTML = '';
+$('progress-text').textContent = '0 / 0';
+$('elapsed-time').textContent = '00:00';
+$('remaining-time').textContent = '--:--';
+$('progress-bar').style.width = '0%';
+$('preview-count').textContent = '0 \u884c';
+$('modal-count').textContent = '0 \u884c';
+document.querySelector('.foot span').textContent = '\u63a5\u7d9a\u78ba\u8a8d\u4e2d...';
+document.querySelector('.foot .dot').className = 'dot dot-off';
+document.querySelector('.mapping-section').style.display = 'none';
+
+// ─── プレビュー モーダル ───
+$('btn-open-preview').addEventListener('click', () => {
+  $('preview-modal').classList.add('open');
+});
+$('btn-close-preview').addEventListener('click', () => {
+  $('preview-modal').classList.remove('open');
+});
+$('preview-modal').addEventListener('click', (e) => {
+  if (e.target === $('preview-modal')) $('preview-modal').classList.remove('open');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('preview-modal').classList.contains('open')) {
+    $('preview-modal').classList.remove('open');
+  }
+});
+
+// ─── キャリブレーション ───
+const CAL_STEPS = [
+  {key: 'search_box', label: '検索ボックスをクリック'},
+  {key: 'first_result', label: '検索結果の1番目のキャラをクリック'},
+  {key: 'add_button', label: '「+」追加ボタンをクリック'},
+  {key: 'text_entry', label: '1番目のテキスト入力エリアをクリック'},
+];
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+let calPositions = {};
+
+document.querySelectorAll('.cal-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const stepKey = btn.dataset.step;
+    const stepEl = btn.closest('.cal-step');
+    const statusEl = stepEl.querySelector('.cal-status');
+    const msg = $('cal-msg');
+
+    btn.disabled = true;
+    stepEl.classList.add('active');
+    msg.textContent = 'AIVoice2の該当箇所にマウスを移動してください';
+
+    // 5秒カウントダウン
+    for (let sec = 5; sec > 0; sec--) {
+      statusEl.textContent = `${sec}秒後に記録...`;
+      statusEl.className = 'cal-status waiting';
+      await delay(1000);
+    }
+
+    // マウス位置を取得
+    const result = await api().get_mouse_offset();
+    btn.disabled = false;
+    stepEl.classList.remove('active');
+
+    if (result.error) {
+      statusEl.textContent = 'エラー';
+      msg.textContent = result.error;
+      return;
+    }
+
+    calPositions[stepKey] = result.offset;
+    statusEl.textContent = `記録済 (${result.offset[0]}, ${result.offset[1]})`;
+    statusEl.className = 'cal-status ok';
+    stepEl.classList.add('done');
+
+    // 全ステップ完了していたら自動保存
+    const allDone = ['search_box','first_result','add_button','text_entry'].every(k => calPositions[k]);
+    if (allDone) {
+      await api().save_calibration(calPositions);
+      msg.textContent = '全ステップ完了・保存しました！';
+      msg.style.color = 'var(--green)';
+    } else {
+      msg.textContent = '記録しました。次のステップへ進んでください。';
+      msg.style.color = 'var(--text-caption)';
+    }
+  });
+});
+
+window.addEventListener('pywebviewready', async () => {
+  checkStatus();
+  statusInterval = setInterval(checkStatus, 5000);
+
+  // キャリブレーション状態確認
+  const hasCal = await api().has_calibration();
+  if (hasCal) {
+    const cal = await api().get_calibration();
+    const steps = document.querySelectorAll('.cal-step');
+    steps.forEach(s => {
+      const key = s.dataset.step;
+      if (cal[key]) {
+        s.classList.add('done');
+        s.querySelector('.cal-status').textContent = `記録済 (${cal[key][0]}, ${cal[key][1]})`;
+        s.querySelector('.cal-status').className = 'cal-status ok';
+      }
+    });
+    $('cal-msg').textContent = 'キャリブレーション済み';
+    $('cal-msg').style.color = 'var(--green)';
+  }
+});
+</script>
+</body>
+</html>
